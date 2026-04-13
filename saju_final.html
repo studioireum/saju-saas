@@ -1,147 +1,280 @@
-# -*- coding: utf-8 -*-
-"""
-사주 SaaS - Flask 서버 v4
-Gemini API 사용 (무료)
-"""
-import os
-import urllib.request
-import json
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from lunar_python import Solar
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>命理 — 맹파 물상 AI 명리</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;700&family=Noto+Sans+KR:wght@300;400;500&display=swap');
+:root{--bg:#0d0c0a;--sur:#161410;--bdr:#2a2620;--gold:#c9a84c;--red:#8b1a1a;--txt:#e8e2d6;--mut:#7a7060;--wht:#f5f0e8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:'Noto Sans KR',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(201,168,76,.04),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(139,26,26,.06),transparent 50%);pointer-events:none;}
+.wrap{max-width:860px;margin:0 auto;padding:40px 20px 80px;}
+header{text-align:center;padding:60px 0 40px;}
+.hd{font-size:11px;letter-spacing:6px;color:var(--gold);margin-bottom:20px;opacity:.8;}
+h1{font-family:'Noto Serif KR',serif;font-size:clamp(36px,7vw,64px);font-weight:300;color:var(--wht);}
+h1 span{color:var(--gold);}
+.hs{margin-top:14px;font-size:13px;color:var(--mut);letter-spacing:1px;}
+.hline{width:1px;height:40px;background:linear-gradient(to bottom,transparent,var(--gold),transparent);margin:24px auto 20px;}
+.pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;}
+.pill{font-size:11px;padding:5px 14px;border:1px solid var(--bdr);color:var(--mut);letter-spacing:1px;}
+.intro{font-family:'Noto Serif KR',serif;font-size:14px;line-height:2;color:var(--mut);text-align:center;max-width:520px;margin:0 auto 10px;}
+.intro em{font-style:normal;color:var(--txt);}
+.card{background:var(--sur);border:1px solid var(--bdr);padding:40px;margin-bottom:30px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.tabs{display:flex;border-bottom:1px solid var(--bdr);margin-bottom:24px;}
+.tab{padding:10px 24px;font-size:12px;letter-spacing:3px;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.tab.on{color:var(--gold);border-bottom-color:var(--gold);}
+.lunar-row{display:none;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bdr);}
+.lunar-row.show{display:flex;}
+.leap-lbl{display:flex;align-items:center;gap:12px;cursor:pointer;font-size:13px;color:var(--mut);user-select:none;}
+.leap-lbl input{display:none;}
+.leap-box{width:28px;height:28px;border:2px solid var(--bdr);background:#0d0c0a;display:flex;align-items:center;justify-content:center;font-size:18px;color:transparent;transition:all .2s;flex-shrink:0;}
+.leap-lbl input:checked ~ .leap-box{border-color:var(--gold);background:rgba(201,168,76,.12);color:var(--gold);}
+.leap-lbl input:disabled ~ .leap-box{opacity:.25;}
+.leap-lbl input:checked ~ .leap-box ~ .leap-txt{color:var(--gold);}
+.leap-note{font-size:11px;color:var(--mut);}
+.conv-note{font-size:12px;color:var(--gold);margin-bottom:16px;padding:8px 12px;border-left:2px solid var(--gold);background:rgba(201,168,76,.05);display:none;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+label.fl{font-size:10px;letter-spacing:3px;color:var(--gold);display:block;margin-bottom:8px;}
+input,select{width:100%;background:#0d0c0a;border:1px solid var(--bdr);color:var(--txt);padding:12px 14px;font-size:16px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s;-webkit-appearance:none;border-radius:0;}
+input:focus,select:focus{border-color:var(--gold);}
+select option{background:#161410;}
+.btn{width:100%;padding:18px;background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:'Noto Serif KR',serif;font-size:15px;letter-spacing:4px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;}
+.btn::before{content:'';position:absolute;inset:0;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform .3s;z-index:0;}
+.btn:hover::before{transform:scaleX(1);}
+.btn:hover{color:var(--bg);}
+.btn span{position:relative;z-index:1;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn:disabled::before{display:none;}
+.btn:disabled:hover{color:var(--gold);}
+.err{color:#c44a2a;font-size:12px;margin-top:10px;display:none;}
+.result{display:none;}
+.result.on{display:block;animation:fi .5s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.sec-title{font-size:10px;letter-spacing:5px;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:16px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--bdr);}
+.ptbl{width:100%;border-collapse:collapse;margin-bottom:30px;font-family:'Noto Serif KR',serif;}
+.ptbl th{font-size:10px;letter-spacing:3px;color:var(--mut);padding:10px 0;font-weight:400;border-bottom:1px solid var(--bdr);text-align:center;}
+.ptbl td{text-align:center;padding:14px 8px;border-bottom:1px solid rgba(42,38,32,.5);}
+.hj{font-size:32px;font-weight:700;color:var(--wht);display:block;}
+.hj.sm{font-size:26px;}
+.kor{font-size:11px;color:var(--mut);margin-top:2px;display:block;}
+.ss{display:inline-block;font-size:10px;padding:3px 10px;border:1px solid var(--bdr);color:var(--mut);letter-spacing:1px;}
+.ss.il{border-color:var(--gold);color:var(--gold);}
+.pl{font-size:10px;color:var(--gold);letter-spacing:2px;}
+.ohgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:30px;}
+.ohi{text-align:center;padding:16px 8px;border:1px solid var(--bdr);}
+.ohi.zero{opacity:.3;}
+.oho{font-family:'Noto Serif KR',serif;font-size:22px;font-weight:700;}
+.ohi[data-o="木"] .oho{color:#4a8c3f;} .ohi[data-o="火"] .oho{color:#c44a2a;}
+.ohi[data-o="土"] .oho{color:#c9a84c;} .ohi[data-o="金"] .oho{color:#8a8a9a;}
+.ohi[data-o="水"] .oho{color:#2a5a9a;}
+.ohc{font-size:28px;font-weight:700;margin:6px 0;}
+.ohi[data-o="木"] .ohc{color:#4a8c3f;} .ohi[data-o="火"] .ohc{color:#c44a2a;}
+.ohi[data-o="土"] .ohc{color:#c9a84c;} .ohi[data-o="金"] .ohc{color:#8a8a9a;}
+.ohi[data-o="水"] .ohc{color:#2a5a9a;}
+.ohlb{font-size:9px;color:var(--mut);letter-spacing:2px;}
+.dwlist{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-bottom:30px;}
+.dwi{min-width:80px;text-align:center;padding:14px 10px;border:1px solid var(--bdr);flex-shrink:0;}
+.dwi.now{border-color:var(--gold);background:rgba(201,168,76,.05);}
+.dwcg,.dwjj{font-family:'Noto Serif KR',serif;font-size:18px;color:var(--wht);}
+.dwkor{font-size:10px;color:var(--mut);}
+.dwa{font-size:9px;color:var(--gold);letter-spacing:1px;margin-top:6px;}
+.dwy{font-size:9px;color:var(--mut);}
+.ai-box{background:var(--sur);border:1px solid var(--bdr);padding:40px;position:relative;min-height:160px;}
+.ai-box::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.ai-txt{font-family:'Noto Serif KR',serif;font-size:15px;line-height:2;white-space:pre-wrap;}
+.dots{display:flex;gap:8px;padding:20px 0;}
+.dots span{width:6px;height:6px;background:var(--gold);border-radius:50%;animation:dot 1.2s ease-in-out infinite;}
+.dots span:nth-child(2){animation-delay:.2s;} .dots span:nth-child(3){animation-delay:.4s;}
+@keyframes dot{0%,80%,100%{transform:scale(.6);opacity:.3;}40%{transform:scale(1);opacity:1;}}
+.qbox{margin-top:16px;display:flex;gap:10px;}
+.qbox input{flex:1;padding:14px 16px;}
+.qbtn{padding:14px 24px;background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:13px;cursor:pointer;letter-spacing:1px;white-space:nowrap;transition:all .2s;}
+.qbtn:hover{background:var(--gold);color:var(--bg);}
+::-webkit-scrollbar{width:4px;height:4px;} ::-webkit-scrollbar-track{background:var(--bg);} ::-webkit-scrollbar-thumb{background:var(--bdr);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="hd">맹파물상명리 · 명리 AI 명리</div>
+  <h1>命<span>理</span></h1>
+  <div class="hs">당신의 사주를 교시가 아닌 <em style="font-style:normal;color:var(--gold)">명리(맹파물상)</em>으로 풀어냅니다</div>
+  <div class="hline"></div>
+  <div class="pills">
+    <span class="pill">🔥 명리 물상론</span>
+    <span class="pill">✨ AI 실시간 해석</span>
+    <span class="pill">🌊 음력·대운 분석</span>
+    <span class="pill">📅 음력 · 양력 변환</span>
+  </div>
+  <div class="intro">
+    생년월일시를 입력하면 <em>격·용신·물상</em>을 넘어 더 깊은 맥락으로 풀어냅니다.<br>
+    물상론(맹파)을 통해 <em>살아있는 자연물</em>로 AI가 따뜻하게 해석해 드립니다.<br>
+    때로는 '대기 중인 봄', 때로는 '물길 위의 불꽃'—<br>
+    당신의 삶을 <em>한 편의 풍경화</em>로 AI가 시적으로 풀어냅니다.
+  </div>
+</header>
 
-app = Flask(__name__, static_folder='.')
-CORS(app)
+<div class="card">
+  <div class="tabs">
+    <div class="tab on" id="tSolar" onclick="setCal('solar')">양력(陽曆)</div>
+    <div class="tab"    id="tLunar" onclick="setCal('lunar')">음력(陰曆)</div>
+  </div>
+  <div class="lunar-row" id="lunarRow">
+    <label class="leap-lbl">
+      <input type="checkbox" id="isLeap" onchange="onLeap()">
+      <div class="leap-box">✓</div>
+      <span class="leap-txt">윤달(閏月)</span>
+    </label>
+    <span class="leap-note" id="leapNote"></span>
+  </div>
+  <div class="conv-note" id="convNote"></div>
+  <div class="grid3">
+    <div><label class="fl" id="lbYear">출생연도</label><input type="number" id="iYear" placeholder="1990" min="1900" max="2050" onchange="chkLeap()"></div>
+    <div><label class="fl" id="lbMonth">월</label><input type="number" id="iMonth" placeholder="1" min="1" max="12" onchange="chkLeap()"></div>
+    <div><label class="fl">일</label><input type="number" id="iDay" placeholder="1" min="1" max="31"></div>
+  </div>
+  <div class="grid2">
+    <div><label class="fl">출생시간(24시)</label><input type="text" id="iHour" placeholder="10:30" maxlength="5" oninput="fmtHour(this)"></div>
+    <div><label class="fl">성별</label><select id="iGender"><option value="남">남(男)</option><option value="여">여(女)</option></select></div>
+  </div>
+  <button class="btn" id="btnGo" onclick="doAnalyze()"><span>명리 분석하기</span></button>
+  <div class="err" id="errMsg"></div>
+</div>
 
-CG = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
-JJ = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
-CK = ['갑','을','병','정','무','기','경','신','임','계']
-JK = ['자','축','인','묘','진','사','오','미','신','유','술','해']
-CO = ['木','木','火','火','土','土','金','金','水','水']
-JO = ['水','土','木','木','土','火','火','土','金','金','土','水']
-CU = ['양','음','양','음','양','음','양','음','양','음']
-SAENG = {'木':'火','火':'土','土':'金','金':'水','水':'木'}
-KUK   = {'木':'土','土':'水','水':'火','火':'金','金':'木'}
-JJMAP = {'子':'癸','丑':'己','寅':'甲','卯':'乙','辰':'戊','巳':'丙',
-          '午':'丁','未':'己','申':'庚','酉':'辛','戌':'戊','亥':'壬'}
-JDAY  = [4,6,5,6,6,7,7,8,8,7,7,6]
+<div class="result" id="result">
+  <div class="sec-title">사주 원국</div>
+  <table class="ptbl">
+    <thead><tr>
+      <th class="pl">구분</th><th class="pl">연주</th><th class="pl">월주</th><th class="pl">일주</th><th class="pl">시주</th>
+    </tr></thead>
+    <tbody id="ptBody"></tbody>
+  </table>
+  <div class="sec-title">오행 분포</div>
+  <div class="ohgrid" id="ohGrid"></div>
+  <div class="sec-title">대운</div>
+  <div class="dwlist" id="dwList"></div>
+  <div class="sec-title">AI 명리 해석</div>
+  <div class="ai-box">
+    <div class="ai-txt" id="aiTxt"></div>
+    <div class="dots" id="dots" style="display:none"><span></span><span></span><span></span></div>
+  </div>
+  <div class="qbox">
+    <input type="text" id="qInput" placeholder="대운, 직업, 배우자, 건강 등 추가로 물어보세요..." onkeydown="if(event.key==='Enter')doAsk()">
+    <button class="qbtn" onclick="doAsk()">물어보기</button>
+  </div>
+</div>
 
-def sipseong(ig, tg):
-    io=CO[CG.index(ig)]; to=CO[CG.index(tg)]
-    iu=CU[CG.index(ig)]; tu=CU[CG.index(tg)]; s=iu==tu
-    if io==to: return '비견' if s else '겁재'
-    if SAENG[to]==io: return '정인' if s else '편인'
-    if KUK[to]==io:   return '정관' if not s else '편관'
-    if SAENG[io]==to: return '식신' if s else '상관'
-    if KUK[io]==to:   return '정재' if not s else '편재'
-    return '?'
+</div>
 
-def calc_dws(y, m, d, fwd):
-    from datetime import date
-    birth = date(y, m, d)
-    jday  = JDAY[m-1]
-    if fwd:
-        if d < jday: target = date(y, m, jday)
-        else:
-            nm = m+1 if m<12 else 1; ny = y if m<12 else y+1
-            target = date(ny, nm, JDAY[nm-1])
-        diff = (target - birth).days
-    else:
-        if d >= jday: target = date(y, m, jday)
-        else:
-            pm = m-1 if m>1 else 12; py = y if m>1 else y-1
-            target = date(py, pm, JDAY[pm-1])
-        diff = (birth - target).days
-    return max(1, round(diff / 3))
+<script>
+const CG=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const JJ=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const CK=['갑','을','병','정','무','기','경','신','임','계'];
+const JK=['자','축','인','묘','진','사','오','미','신','유','술','해'];
+const CO=['木','木','火','火','土','土','金','金','水','水'];
+const JO=['水','土','木','木','土','火','火','土','金','金','土','水'];
+const CU=['양','음','양','음','양','음','양','음','양','음'];
+const SAENG={'木':'火','火':'土','土':'金','金':'水','水':'木'};
+const KUK={'木':'土','土':'水','水':'火','火':'金','金':'木'};
+const INWEOL={'甲':'丙','乙':'戊','丙':'庚','丁':'壬','戊':'甲','己':'丙','庚':'戊','辛':'庚','壬':'甲','癸':'丙'};
+const SIJIL={'甲':'甲','乙':'丙','丙':'戊','丁':'庚','戊':'壬','己':'甲','庚':'丙','辛':'戊','壬':'庚','癸':'壬'};
+const MJIJI=['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
+const JDAY=[4,6,5,6,6,7,7,8,8,7,7,6];
 
-def calc_saju(y, m, d, h, gender):
-    sol = Solar.fromYmdHms(y, m, d, h, 0, 0)
-    lun = sol.getLunar()
-    def split(gj): return gj[0], gj[1]
-    ycg,yjj = split(lun.getYearInGanZhi())
-    mcg,mjj = split(lun.getMonthInGanZhi())
-    dcg,djj = split(lun.getDayInGanZhi())
-    hcg,hjj = split(lun.getTimeInGanZhi())
-    P = [{'cg':ycg,'jj':yjj},{'cg':mcg,'jj':mjj},
-         {'cg':dcg,'jj':djj},{'cg':hcg,'jj':hjj}]
-    OH = {'木':0,'火':0,'土':0,'金':0,'水':0}
-    for p in P:
-        OH[CO[CG.index(p['cg'])]] += 1
-        OH[JO[JJ.index(p['jj'])]] += 1
-    NK = ['년','월','일','시']
-    SS = {}
-    for i,p in enumerate(P):
-        if NK[i] != '일': SS[NK[i]+'간'] = sipseong(dcg, p['cg'])
-        SS[NK[i]+'지'] = sipseong(dcg, JJMAP[p['jj']])
-    yum = CU[CG.index(ycg)]
-    fwd = (gender=='남' and yum=='양') or (gender=='여' and yum=='음')
-    dws = calc_dws(y, m, d, fwd)
-    mi, mji = CG.index(mcg), JJ.index(mjj)
-    DW = []
-    for i in range(1, 9):
-        ci = ((mi + (i if fwd else -i)) % 10 + 10) % 10
-        ji = ((mji + (i if fwd else -i)) % 12 + 12) % 12
-        DW.append({'cg':CG[ci],'jj':JJ[ji],'age':dws+(i-1)*10,'yr':y+dws+(i-1)*10})
-    return {'P':P,'ilgan':dcg,'OH':OH,'SS':SS,'DW':DW,'dws':dws}
+const LT={"1900":{"1":"1900-01-31","2":"1900-03-01","3":"1900-03-31","4":"1900-04-29","5":"1900-05-28","6":"1900-06-27","7":"1900-07-26","8":"1900-08-25","8L":"1900-09-24","9":"1900-10-23","10":"1900-11-22","11":"1900-12-22","12":"1901-01-20"},"1901":{"1":"1901-02-19","2":"1901-03-20","3":"1901-04-19","4":"1901-05-18","5":"1901-06-16","6":"1901-07-16","7":"1901-08-14","8":"1901-09-13","9":"1901-10-12","10":"1901-11-11","11":"1901-12-11","12":"1902-01-10"},"1970":{"1":"1970-02-06","2":"1970-03-08","3":"1970-04-06","4":"1970-05-05","5":"1970-06-04","6":"1970-07-04","7":"1970-08-02","8":"1970-09-01","9":"1970-09-30","10":"1970-10-30","11":"1970-11-29","12":"1970-12-28"},"1971":{"1":"1971-01-27","2":"1971-02-25","3":"1971-03-27","4":"1971-04-25","5":"1971-05-24","5L":"1971-06-23","6":"1971-07-22","7":"1971-08-21","8":"1971-09-19","9":"1971-10-19","10":"1971-11-18","11":"1971-12-18","12":"1972-01-16"},"1980":{"1":"1980-02-16","2":"1980-03-17","3":"1980-04-15","4":"1980-05-14","5":"1980-06-13","6":"1980-07-12","7":"1980-08-11","8":"1980-09-09","9":"1980-10-09","10":"1980-11-08","11":"1980-12-07","12":"1981-01-06"},"1990":{"1":"1990-01-27","2":"1990-02-25","3":"1990-03-27","4":"1990-04-25","5":"1990-05-24","5L":"1990-06-23","6":"1990-07-22","7":"1990-08-20","8":"1990-09-19","9":"1990-10-19","10":"1990-11-17","11":"1990-12-17","12":"1991-01-16"},"2000":{"1":"2000-02-05","2":"2000-03-06","3":"2000-04-05","4":"2000-05-04","5":"2000-06-02","6":"2000-07-02","7":"2000-07-31","8":"2000-08-29","9":"2000-09-28","10":"2000-10-27","11":"2000-11-26","12":"2000-12-26"},"2010":{"1":"2010-02-14","2":"2010-03-16","3":"2010-04-14","4":"2010-05-14","5":"2010-06-12","6":"2010-07-12","7":"2010-08-10","8":"2010-09-08","9":"2010-10-08","10":"2010-11-06","11":"2010-12-06","12":"2011-01-04"},"2020":{"1":"2020-01-25","2":"2020-02-24","3":"2020-03-24","4":"2020-04-23","4L":"2020-05-23","5":"2020-06-21","6":"2020-07-21","7":"2020-08-19","8":"2020-09-17","9":"2020-10-17","10":"2020-11-15","11":"2020-12-15","12":"2021-01-13"}};
+const LM={"1900":8,"1903":5,"1906":4,"1909":2,"1911":6,"1914":5,"1917":2,"1919":7,"1922":5,"1925":4,"1928":2,"1930":6,"1933":5,"1936":3,"1938":7,"1941":6,"1944":4,"1947":2,"1949":7,"1952":5,"1955":3,"1957":8,"1960":6,"1963":4,"1966":3,"1968":7,"1971":5,"1974":4,"1976":8,"1979":6,"1982":4,"1984":10,"1987":6,"1990":5,"1993":3,"1995":8,"1998":5,"2001":4,"2004":2,"2006":7,"2009":5,"2012":3,"2014":9,"2017":5,"2020":4,"2023":2,"2025":6,"2028":5,"2031":3,"2033":11,"2036":6,"2039":5,"2042":2,"2044":7,"2047":5,"2050":3};
 
-SYSTEM = """당신은 맹파(盲派) 물상론을 중심으로 정통 명리학을 통합 해석하는 전문가입니다.
-천간지지를 살아있는 자연물로 읽습니다: 甲木=큰소나무, 乙木=화초덩굴, 丙火=태양, 丁火=촛불별빛, 戊土=산제방, 己土=논밭, 庚金=도끼바위, 辛金=보석칼날, 壬水=바다강, 癸水=빗물이슬.
-해석순서: 1)일간 물상 2)사주 풍경화 묘사 3)오행 결핍·과다 물상화 4)현재 대운 변화 5)직업·재물·관계·건강.
-규칙: 마크다운 금지, 산문체 700~900자, 제공된 원국 그대로 사용, 재계산 금지."""
+function jd(y,m,d){const a=(14-m)/12|0,y2=y+4800-a,m2=m+12*a-3;return d+((153*m2+2)/5|0)+365*y2+(y2/4|0)-(y2/100|0)+(y2/400|0)-32045;}
+function yearGJ(y){const i=((y-1984)%60+60)%60;return[CG[i%10],JJ[i%12]];}
+function monthJJ(y,m,d){const jday=JDAY[m-1];if(m===1)return d<jday?'丑':'寅';let i=m-2;if(d<jday)i--;return MJIJI[((i%12)+12)%12];}
+function monthGJ(ycg,y,m,d){const mj=monthJJ(y,m,d);const offset=(JJ.indexOf(mj)-JJ.indexOf('寅')+12)%12;const ci=(CG.indexOf(INWEOL[ycg])+offset)%10;return[CG[ci],mj];}
+function dayGJ(y,m,d){const diff=jd(y,m,d)-jd(1900,1,1);const i=(10+diff)%60;return[CG[i%10],JJ[i%12]];}
+function hourJJ(h){const R=[[23,25,'子'],[1,3,'丑'],[3,5,'寅'],[5,7,'卯'],[7,9,'辰'],[9,11,'巳'],[11,13,'午'],[13,15,'未'],[15,17,'申'],[17,19,'酉'],[19,21,'戌'],[21,23,'亥']];for(const[s,e,j]of R)if(h>=s&&h<e)return j;return'子';}
+function hourGJ(dcg,h){const hj=hourJJ(h),offset=(JJ.indexOf(hj)-JJ.indexOf('子')+12)%12;const ci=(CG.indexOf(SIJIL[dcg])+offset)%10;return[CG[ci],hj];}
+function sipseong(ilgan,target){const io=CO[CG.indexOf(ilgan)],to=CO[CG.indexOf(target)];const iu=CU[CG.indexOf(ilgan)],tu=CU[CG.indexOf(target)];const same=iu===tu;if(io===to)return same?'비견':'겁재';if(SAENG[to]===io)return same?'정인':'편인';if(KUK[to]===io)return !same?'정관':'편관';if(SAENG[io]===to)return same?'식신':'상관';if(KUK[io]===to)return !same?'정재':'편재';return'?';}
+const JJSS_MAP={子:'癸',丑:'己',寅:'甲',卯:'乙',辰:'戊',巳:'丙',午:'丁',未:'己',申:'庚',酉:'辛',戌:'戊',亥:'壬'};
+function jjss(ilgan,jj){return sipseong(ilgan,JJSS_MAP[jj]);}
+function calcSaju(y,m,d,h,g){
+  const[ycg,yjj]=yearGJ(y);
+  const[mcg,mjj]=monthGJ(ycg,y,m,d);
+  const[dcg,djj]=dayGJ(y,m,d);
+  const[hcg,hjj]=hourGJ(dcg,h);
+  const P=[{cg:ycg,jj:yjj},{cg:mcg,jj:mjj},{cg:dcg,jj:djj},{cg:hcg,jj:hjj}];
+  const OH={木:0,火:0,土:0,金:0,水:0};
+  for(const p of P){OH[CO[CG.indexOf(p.cg)]]++;OH[JO[JJ.indexOf(p.jj)]]++;}
+  const SS={};
+  ['연','월','일','시'].forEach((n,i)=>{if(n!=='일')SS[n+'간']=sipseong(dcg,P[i].cg);SS[n+'지']=jjss(dcg,P[i].jj);});
+  const yum=CU[CG.indexOf(ycg)];
+  const fwd=(g==='남')?(yum==='양'):(yum==='음');
+  const mi=CG.indexOf(mcg),mji=JJ.indexOf(mjj);
+  function calcDWS(y,m,d,fwd){function ud(y,m,d){return Date.UTC(y,m-1,d);}const birth=ud(y,m,d),jday=JDAY[m-1];let target,diff;if(fwd){if(d<jday){target=ud(y,m,jday);}else{const nm=m<12?m+1:1,ny=m<12?y:y+1;target=ud(ny,nm,JDAY[nm-1]);}diff=Math.round((target-birth)/86400000);}else{if(d>=jday){target=ud(y,m,jday);}else{const pm=m>1?m-1:12,py=m>1?y:y-1;target=ud(py,pm,JDAY[pm-1]);}diff=Math.round((birth-target)/86400000);}return Math.max(1,Math.round(diff/3));}
+  const dws=calcDWS(y,m,d,fwd);
+  const DW=[];
+  for(let i=1;i<=8;i++){const ci=((mi+(fwd?i:-i))%10+10)%10;const ji=((mji+(fwd?i:-i))%12+12)%12;DW.push({cg:CG[ci],jj:JJ[ji],age:dws+(i-1)*10,yr:y+dws+(i-1)*10});}
+  return{P,ilgan:dcg,OH,SS,DW};
+}
 
-def call_gemini(messages):
-    key = os.environ.get('GEMINI_API_KEY','').strip()
-    if not key:
-        return None, 'GEMINI_API_KEY 없음'
-    # 대화 히스토리를 하나의 프롬프트로 변환
-    prompt = SYSTEM + '\n\n'
-    for msg in messages:
-        role = '사용자' if msg['role'] == 'user' else '어시스턴트'
-        prompt += f'{role}: {msg["content"]}\n\n'
-    prompt += '어시스턴트:'
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}'
-    data = json.dumps({'contents':[{'parts':[{'text': prompt}]}],'generationConfig':{'maxOutputTokens':2000}}).encode()
-    req = urllib.request.Request(url, data=data, headers={'Content-Type':'application/json'})
-    try:
-        resp = urllib.request.urlopen(req, timeout=60)
-        result = json.loads(resp.read())
-        text = result['candidates'][0]['content']['parts'][0]['text']
-        return text, None
-    except urllib.error.HTTPError as e:
-        err = e.read().decode()
-        return None, f'Gemini 오류: {err[:200]}'
-    except Exception as e:
-        return None, str(e)
+let calType='solar';
+function setCal(t){calType=t;document.getElementById('tSolar').classList.toggle('on',t==='solar');document.getElementById('tLunar').classList.toggle('on',t==='lunar');document.getElementById('lunarRow').classList.toggle('show',t==='lunar');document.getElementById('lbYear').textContent=t==='lunar'?'음력 출생연도':'출생연도';document.getElementById('lbMonth').textContent=t==='lunar'?'음력 월':'월';if(t==='lunar')chkLeap();}
+function chkLeap(){const y=document.getElementById('iYear').value;const m=document.getElementById('iMonth').value;const el=document.getElementById('leapNote');const cb=document.getElementById('isLeap');if(!y||!m){el.textContent='';return;}const lm=LM[String(y)];if(lm&&parseInt(m)===lm){el.textContent=y+'년 '+m+'월은 윤달이 존재합니다 ♦';el.style.color='var(--gold)';cb.disabled=false;}else{el.textContent=y+'년 '+m+'월은 윤달 없음';el.style.color='var(--mut)';cb.checked=false;cb.disabled=true;}}
+function onLeap(){chkLeap();}
+function lunar2solar(y,m,d,leap){const yd=LT[String(y)];if(!yd)return null;const key=String(m)+(leap?'L':'');const s=yd[key];if(!s)return null;const[sy,sm,sd]=s.split('-').map(Number);const dt=new Date(Date.UTC(sy,sm-1,sd));dt.setUTCDate(dt.getUTCDate()+d-1);return{y:dt.getUTCFullYear(),m:dt.getUTCMonth()+1,d:dt.getUTCDate()};}
 
-@app.route('/')
-def index():
-    return send_from_directory('.', 'saju_final.html')
+function fmtHour(el){let v=el.value.replace(/[^0-9:]/g,'');const dg=v.replace(/:/g,'');if(!v.includes(':')&&dg.length>=3)v=dg.slice(0,2)+':'+dg.slice(2);el.value=v;}
+function parseHour(raw){if(!raw)return null;let h,m;if(raw.includes(':')){[h,m]=raw.split(':').map(Number);}else{const n=parseInt(raw);if(isNaN(n))return null;h=n<=23?n:Math.floor(n/100);m=n<=23?0:n%100;}if(isNaN(h)||isNaN(m)||h<0||h>23||m<0||m>59)return null;return h;}
 
-@app.route('/api/saju', methods=['POST'])
-def saju():
-    data = request.get_json(silent=True)
-    if not data: return jsonify({'error':'입력 없음'}), 400
-    try:
-        y=int(data['year']); m=int(data['month']); d=int(data['day'])
-        h=int(data['hour']); g=data.get('gender','남')
-        return jsonify(calc_saju(y, m, d, h, g))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+function renderPillars(saju){const{P,ilgan,SS}=saju;const NK=['연','월','일','시'];let html='<tr><td style="color:var(--mut);font-size:11px;letter-spacing:2px">십성</td>';P.forEach((p,i)=>{const s=i===2?'일간':SS[NK[i]+'간'];html+=`<td><span class="ss ${i===2?'il':''}">${s}</span></td>`;});html+='</tr>';html+='<tr><td style="color:var(--mut);font-size:11px;letter-spacing:2px">천간</td>';P.forEach(p=>{html+=`<td><span class="hj">${p.cg}</span><span class="kor">(${CK[CG.indexOf(p.cg)]})</span></td>`;});html+='</tr>';html+='<tr><td style="color:var(--mut);font-size:11px;letter-spacing:2px">지지</td>';P.forEach(p=>{html+=`<td><span class="hj sm">${p.jj}</span><span class="kor">(${JK[JJ.indexOf(p.jj)]})</span></td>`;});html+='</tr>';html+='<tr><td style="color:var(--mut);font-size:11px;letter-spacing:2px">지장간</td>';P.forEach((p,i)=>{html+=`<td><span class="ss">${SS[NK[i]+'지']}</span></td>`;});html+='</tr>';document.getElementById('ptBody').innerHTML=html;}
+function renderOH(saju){const order=['木','火','土','金','水'];document.getElementById('ohGrid').innerHTML=order.map(o=>`<div class="ohi ${saju.OH[o]===0?'zero':''}" data-o="${o}"><div class="oho">${o}</div><div class="ohc">${saju.OH[o]}</div><div class="ohlb">${saju.OH[o]===0?'결핍':'기운'}</div></div>`).join('');}
+function renderDW(saju){const cy=new Date().getFullYear();document.getElementById('dwList').innerHTML=saju.DW.map(d=>{const now=cy>=d.yr&&cy<d.yr+10;return`<div class="dwi ${now?'now':''}"><div class="dwcg">${d.cg}<span class="dwkor">(${CK[CG.indexOf(d.cg)]})</span></div><div class="dwjj">${d.jj}<span class="dwkor">(${JK[JJ.indexOf(d.jj)]})</span></div><div class="dwa">${d.age}세~</div><div class="dwy">${d.yr}년</div></div>`;}).join('');}
+function buildPrompt(saju,y,m,d,hRaw,g,lunarNote){const{P,ilgan,OH,SS,DW}=saju;const NK=['연','월','일','시'];const pillars=P.map((p,i)=>{const ss=i===2?'일간(나)':SS[NK[i]+'간'];return`${NK[i]}주: ${p.cg}(${CK[CG.indexOf(p.cg)]})${p.jj}(${JK[JJ.indexOf(p.jj)]}) [천간:${ss}/지지:${SS[NK[i]+'지']}]`;}).join('\n');const oh=Object.entries(OH).map(([k,v])=>`${k}:${v}`).join(' ');const cy=new Date().getFullYear();const curDW=DW.find(d=>cy>=d.yr&&cy<d.yr+10);return`[사주 원국]\n생년월일시: ${y}년 ${m}월 ${d}일 ${hRaw}시 (${g})${lunarNote?' / '+lunarNote:''}\n일간: ${ilgan}(${CK[CG.indexOf(ilgan)]}) — ${ilgan}의 물상 중심 해석\n\n${pillars}\n\n오행분포: ${oh}\n현재 대운(${cy}): ${curDW?curDW.cg+curDW.jj+'('+curDW.age+'세~)':'없음'}\n대운 흐름: ${DW.slice(0,6).map(d=>d.cg+d.jj+'('+d.age+'세)').join('→')}\n\n맹파 물상론 기준 해석을 산문체로 부탁드립니다.`;}
 
-@app.route('/api/analyze', methods=['POST'])
-def analyze():
-    data = request.get_json(silent=True)
-    if not data or not data.get('messages'):
-        return jsonify({'error':'메시지 없음'}), 400
-    text, err = call_gemini(data['messages'])
-    if err: return jsonify({'error': err}), 500
-    return jsonify({'text': text})
+let history=[];
+async function callAI(prompt,isFirst){
+  const aiTxt=document.getElementById('aiTxt');
+  const dots=document.getElementById('dots');
+  if(isFirst){aiTxt.textContent='';history=[];}
+  dots.style.display='flex';
+  history.push({role:'user',content:prompt});
+  const SYS=`당신은 맹파(盲派) 물상론을 중심으로 정통 명리학을 통합 해석하는 전문가입니다.천간지지를 살아있는 자연물로 읽습니다: 甲木=큰소나무, 乙木=화초덩굴, 丙火=태양, 丁火=촛불별빛, 戊土=산제방, 己土=논밭, 庚金=도끼바위, 辛金=보석칼날, 壬水=바다강, 癸水=빗물이슬.해석순서: 1)일간 물상 2)사주 풍경화 묘사 3)오행 결핍 과다 물상화 4)현재 대운 변화 5)직업 재물 관계 건강.규칙: 마크다운 금지, 산문체 700~900자, 제공된 원국 그대로 사용, 재계산 금지.`;
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),60000);
+    const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history}),signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok){const er=await r.json().catch(()=>({}));throw new Error(er.error||'서버 오류 '+r.status);}
+    const d=await r.json();
+    const txt=d.text||'';
+    dots.style.display='none';
+    if(!txt)throw new Error('응답 없음');
+    aiTxt.textContent='';
+    for(let i=0;i<txt.length;i++){aiTxt.textContent+=txt[i];if(i%6===0)await new Promise(r=>setTimeout(r,8));}
+    history.push({role:'assistant',content:txt});
+  }catch(e){dots.style.display='none';aiTxt.textContent='[오류] '+e.message;}
+}
 
-@app.route('/api/health')
-def health():
-    key = os.environ.get('GEMINI_API_KEY','').strip()
-    return jsonify({'status':'ok','api_key':'set' if key else 'missing'})
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, port=port, host='0.0.0.0')
+let curSaju=null;
+function doAnalyze(){
+  const errEl=document.getElementById('errMsg');
+  const noteEl=document.getElementById('convNote');
+  errEl.style.display='none';noteEl.style.display='none';
+  let y=parseInt(document.getElementById('iYear').value);
+  let m=parseInt(document.getElementById('iMonth').value);
+  let d=parseInt(document.getElementById('iDay').value);
+  const hRaw=document.getElementById('iHour').value.trim();
+  const h=parseHour(hRaw);
+  const g=document.getElementById('iGender').value;
+  if(!y||!m||!d||h===null){errEl.textContent='연도·월·일·시간을 모두 입력해주세요. (시간예: 10:30 형식)';errEl.style.display='block';return;}
+  let lunarNote='';
+  if(calType==='lunar'){const leap=document.getElementById('isLeap').checked;const sol=lunar2solar(y,m,d,leap);if(!sol){errEl.textContent='음력 변환 오류';errEl.style.display='block';return;}lunarNote=`음력 ${y}년 ${m}월 ${d}일${leap?' (윤달)':''}`;noteEl.textContent=lunarNote+` → 양력 ${sol.y}년 ${sol.m}월 ${sol.d}일`;noteEl.style.display='block';y=sol.y;m=sol.m;d=sol.d;}
+  const btn=document.getElementById('btnGo');btn.disabled=true;
+  fetch('/api/saju',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:y,month:m,day:d,hour:h,gender:g})}).then(r=>{if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw new Error('서버 오류');return r.json();}).then(data=>{if(data.error)throw new Error(data.error);curSaju=data;document.getElementById('ptBody').innerHTML='';document.getElementById('ohGrid').innerHTML='';document.getElementById('dwList').innerHTML='';renderPillars(curSaju);renderOH(curSaju);renderDW(curSaju);const res=document.getElementById('result');res.classList.remove('on');void res.offsetWidth;res.classList.add('on');const prompt=buildPrompt(curSaju,y,m,d,hRaw,g,lunarNote);callAI(prompt,true).finally(()=>btn.disabled=false);}).catch(e=>{try{curSaju=calcSaju(y,m,d,h,g);document.getElementById('ptBody').innerHTML='';document.getElementById('ohGrid').innerHTML='';document.getElementById('dwList').innerHTML='';renderPillars(curSaju);renderOH(curSaju);renderDW(curSaju);const res=document.getElementById('result');res.classList.remove('on');void res.offsetWidth;res.classList.add('on');const prompt=buildPrompt(curSaju,y,m,d,hRaw,g,lunarNote);callAI(prompt,true).finally(()=>btn.disabled=false);}catch(e2){errEl.textContent='계산 오류: '+e2.message;errEl.style.display='block';btn.disabled=false;}});
+}
+function doAsk(){const inp=document.getElementById('qInput');const q=inp.value.trim();if(!q||!curSaju)return;inp.value='';const aiTxt=document.getElementById('aiTxt');aiTxt.textContent+='\n\n━━━━━━━━━━━\n추가질문: '+q+'\n\n';callAI(q,false);}
+</script>
+</body>
+</html>
