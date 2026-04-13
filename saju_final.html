@@ -429,25 +429,22 @@ async function callAI(prompt,isFirst){
   history.push({role:'user',content:prompt});
   const SYS=`당신은 맹파(盲派) 물상론 명리 전문가입니다. 천간지지를 자연물로 읽습니다: 甲木=큰소나무, 乙木=화초, 丙火=태양, 丁火=촛불, 戊土=산, 己土=논밭, 庚金=도끼바위, 辛金=보석칼날, 壬水=바다강, 癸水=빗물이슬. 해석순서: 1)일간 물상 2)사주 풍경화 3)오행 불균형 4)현재 대운 5)직업재물관계건강. 마크다운 금지, 산문체 700~900자, 제공 원국 그대로 사용.`;
   try{
-    let txt='';
-    // 1차: 로컬 서버 (3초 타임아웃)
-    try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),3000);
-      const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history}),signal:ctrl.signal});
-      clearTimeout(tid);
-      if(r.ok){const d=await r.json();txt=d.text||'';}
-    }catch(e1){/*서버없음*/}
-    // 2차: Anthropic 직접
-    if(!txt){
-      const r2=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-opus-4-5',max_tokens:2000,system:SYS,messages:history})
-      });
-      if(r2.ok){const d2=await r2.json();txt=(d2.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');}
-      else{const er=await r2.json().catch(()=>({}));throw new Error(er?.error?.message||'API '+r2.status);}
+    // /api/analyze 서버 호출 (60초 타임아웃)
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),60000);
+    const r=await fetch('/api/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:history}),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(!r.ok){
+      const er=await r.json().catch(()=>({}));
+      throw new Error(er.error||'서버 오류 '+r.status);
     }
+    const d=await r.json();
+    const txt=d.text||'';
     dots.style.display='none';
     if(!txt) throw new Error('응답 없음');
     aiTxt.textContent='';
@@ -458,7 +455,7 @@ async function callAI(prompt,isFirst){
     history.push({role:'assistant',content:txt});
   }catch(e){
     dots.style.display='none';
-    aiTxt.textContent='[오류] '+e.message+'\n\n로컬 실행: python saju_server.py';
+    aiTxt.textContent='[오류] '+e.message;
   }
 }
 
