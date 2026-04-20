@@ -83,7 +83,7 @@ def call_gemini(messages):
         role='사용자' if msg['role']=='user' else '어시스턴트'
         prompt+=f'{role}: {msg["content"]}\n\n'
     prompt+='어시스턴트:'
-    url=f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}'
+    url=f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}'
     data=json.dumps({'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{'maxOutputTokens':2000}}).encode()
     req=urllib.request.Request(url,data=data,headers={'Content-Type':'application/json'})
     try:
