@@ -87,7 +87,7 @@ def call_gemini(messages):
         prompt+=f'{role}: {msg["content"]}\n\n'
     prompt+='어시스턴트:'
     url=f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}'
-    data=json.dumps({'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{''maxOutputTokens':8000,'thinkingConfig':{'thinkingBudget':0}}).encode()
+    data=json.dumps({'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{'maxOutputTokens':8000,'thinkingConfig':{'thinkingBudget':0}}}).encode()
     req=urllib.request.Request(url,data=data,headers={'Content-Type':'application/json'})
     try:
         resp=urllib.request.urlopen(req,timeout=60)
